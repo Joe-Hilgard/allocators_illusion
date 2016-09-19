@@ -1,7 +1,9 @@
 
 library(plyr)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
+library(lme4)
 
 dat1 <- read.csv ("Study 1_Data.csv")
 dat2 <- read.csv ("Study 2_Data.csv")
@@ -83,11 +85,24 @@ dat6 <- dat6 %>%
          pick_flip = factor(pick_flip, labels = c("pick", "flip")),
          win_lose = factor(win_lose, labels = c("bonus", "no bonus")),
          #role = factor(role, labels = c("receiver", "allocator")),
-         condition = interaction(pick_flip, win_lose))
+         condition = interaction(pick_flip, win_lose),
+         id = as.factor(participant))
 ggplot(dat6, aes(x = feel)) +
   geom_bar(stat = "count") +
   facet_grid(win_lose ~ pick_flip) +
   scale_x_continuous(breaks = 1:7)
+# HLM (b/c fully nested w/in participants)
+mod6 <- lmer(feel ~ pick_flip * win_lose + (1|id), data = dat6)
+summary(mod6)
+
+# Bad model failing to account for nestedness
+mod6.bad <- aov(feel ~ pick_flip * win_lose, data = dat6)
+summary(mod6.bad)
+
+# repeated-measures model -- this is the one they'd used
+mod6.rm <- aov(feel ~ pick_flip * win_lose + Error(id / (pick_flip * win_lose)), 
+               data = dat6)
+summary(mod6.rm)
 
 # Exp7
 dat7 <- dat7 %>% 
@@ -101,7 +116,7 @@ ggplot(dat7, aes(x = feel, fill = role)) +
   facet_grid(win_lose ~ pick_flip) +
   scale_x_continuous(breaks = 1:7)
 # What is role = 3? role = 4?
-# Felix's plot
+# Felix's plot237
 dat7 %>% 
   filter(pick_flip == "pick") %>% 
   ggplot(aes(x = feel, fill = win_lose)) +
